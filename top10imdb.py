@@ -1,25 +1,34 @@
 """
 An example script for webscrapping using python requests and regex modules
 
-This scripts opens the imdb top movies page and fetches list of movies and prints them
+This scripts opens the imdb top movies page and fetches list of movies and prints them and stores them in a csv file
 
-Optionally, Will be implemented to store those records in sqlite database and to a csv file
+Optionally, Implemented to store those records in sqlite database
 
 """
 
 import requests
 import re
 import sys
+import sqlite3
 from pprint import pprint
 
-try:
-    r = requests.get("https://www.imdbtestcom/chart/top/")
-    print(dir(r))
-    for header in sorted(r.headers):
-        print("{} : {}".format(header, r.headers[header]))
-except:
-    print("Failed to fetch the imdb top movies page\nexiting...")
-    sys.exit(1)
+def get_url_content():
+    try:
+        r = requests.get("https://www.imdb.com/chart/top/")
+        print(dir(r))
+        for header in sorted(r.headers):
+            print("{} : {}".format(header, r.headers[header]))
+        return r
+    except:
+        print("Failed to fetch the imdb top movies page\nexiting...")
+        sys.exit(1)
+
+sql_con = sqlite3.connect("/tmp/imdb.db")
+cursor = sql_con.cursor()
+cursor.execute("create table if not exists imdb_movies (name varchar, year integer, rating float);")
+
+r = get_url_content()
 
 print(r.ok)
 
@@ -34,6 +43,10 @@ for tr in compiled_tr_pattern.finditer(tbody_html):
     title_text = title.group(1)
     release_year = title.group(2)
     rating = title.group(3)
-    print("{} {}, {}".format(title_text, release_year, rating))
+    cursor.execute("insert into imdb_movies values(\"{}\", {}, {})".format(title_text, release_year, rating))
+    #print("{} {}, {}".format(title_text, release_year, rating))
 
 #pprint(r.text.split("\n"))
+
+rows = cursor.execute("select * from imdb_movies").fetchall()
+pprint(rows)
